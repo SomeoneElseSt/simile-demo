@@ -33,7 +33,7 @@
   .range-labels{display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text3)}
   .range-val{font-family:'IBM Plex Mono',monospace;font-size:0.82rem;font-weight:500;color:var(--text)}
 
-  .legend{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:8px;font-size:0.78rem;color:var(--text2)}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:8px;font-size:0.76rem;color:var(--text2)}
   .legend span{display:flex;align-items:center;gap:5px}
   .legend .dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
   .legend .line-dash{flex-shrink:0}
@@ -77,7 +77,7 @@
   </div>
 
   <div class="legend">
-    <span><span class="dot" style="background:var(--blue)"></span>Random removal (expected)</span>
+    <span><span class="dot" style="background:var(--blue)"></span>Random removal (averaged over 10,000 draws per bracket)</span>
     <span><svg class="line-dash" width="18" height="4" viewBox="0 0 18 4"><line x1="0" y1="2" x2="18" y2="2" stroke="var(--coral)" stroke-width="2.5" stroke-dasharray="5,3"/></svg>Sequential removal (from start)</span>
     <span><svg class="line-dash" width="18" height="4" viewBox="0 0 18 4"><line x1="0" y1="2" x2="18" y2="2" stroke="var(--teal)" stroke-width="2.5" stroke-dasharray="5,3"/></svg>Sequential removal (from end)</span>
   </div>
@@ -116,16 +116,35 @@ function generateValues(n,skew,mode){
   return vals;
 }
 function computeAccuracy(vals,totalInfo){return 0.3+0.7*(vals.reduce((a,b)=>a+b,0)/totalInfo)}
-function randomRemovalExpected(vals,fracs){let t=vals.reduce((a,b)=>a+b,0);return fracs.map(f=>0.3+0.7*(1-f))}
 function seqFromStart(vals,fracs){let t=vals.reduce((a,b)=>a+b,0);return fracs.map(f=>{let r=Math.round(f*vals.length);return computeAccuracy(vals.slice(r),t)})}
 function seqFromEnd(vals,fracs){let t=vals.reduce((a,b)=>a+b,0);return fracs.map(f=>{let r=Math.round(f*vals.length);return computeAccuracy(vals.slice(0,vals.length-r),t)})}
+function randomRemovalSimulated(vals,fracs,nTrials){
+  const n=vals.length,t=vals.reduce((a,b)=>a+b,0);
+  const base=Array.from({length:n},(_,i)=>i);
+  return fracs.map(f=>{
+    const r=Math.round(f*n);
+    if(r===0)return 0.3+0.7;
+    let sumAcc=0;
+    for(let trial=0;trial<nTrials;trial++){
+      const arr=base.slice();
+      let removedSum=0;
+      for(let j=0;j<r;j++){
+        const k=j+Math.floor(Math.random()*(n-j));
+        const tmp=arr[j];arr[j]=arr[k];arr[k]=tmp;
+        removedSum+=vals[arr[j]];
+      }
+      sumAcc+=0.3+0.7*((t-removedSum)/t);
+    }
+    return sumAcc/nTrials;
+  });
+}
 
 const fracs=[0,0.2,0.4,0.6,0.8],labels=['0%','20%','40%','60%','80%'];
 
 let chart1=new Chart(document.getElementById('lesionChart'),{
   type:'line',
   data:{labels,datasets:[
-    {label:'Random removal',data:[],borderColor:blueHex,backgroundColor:blueBg,fill:true,borderWidth:2.5,pointRadius:5,pointBackgroundColor:blueHex,tension:0},
+    {label:'Random removal (averaged over 10,000 draws per bracket)',data:[],borderColor:blueHex,backgroundColor:blueBg,fill:true,borderWidth:2.5,pointRadius:5,pointBackgroundColor:blueHex,tension:0},
     {label:'Sequential (from start)',data:[],borderColor:coralHex,backgroundColor:'transparent',borderWidth:2.5,pointRadius:5,pointBackgroundColor:coralHex,borderDash:[6,3],tension:0.2},
     {label:'Sequential (from end)',data:[],borderColor:tealHex,backgroundColor:'transparent',borderWidth:2.5,pointRadius:5,pointBackgroundColor:tealHex,borderDash:[6,3],tension:0.2}
   ]},
@@ -150,17 +169,23 @@ let chart2=new Chart(document.getElementById('distChart'),{
   }
 });
 
+let simTimer=null;
 function update(){
   let n=parseInt(nItemsEl.value),skew=parseFloat(skewEl.value),mode=concEl.value;
   nItemsOut.textContent=n;
   let vals=generateValues(n,skew,mode);
-  chart1.data.datasets[0].data=randomRemovalExpected(vals,fracs).map(v=>Math.round(v*1000)/1000);
   chart1.data.datasets[1].data=seqFromStart(vals,fracs).map(v=>Math.round(v*1000)/1000);
   chart1.data.datasets[2].data=seqFromEnd(vals,fracs).map(v=>Math.round(v*1000)/1000);
   chart1.update();
   chart2.data.labels=vals.map((_,i)=>i+1);
   chart2.data.datasets[0].data=vals.map(v=>Math.round(v*1000)/1000);
   chart2.update();
+  if(simTimer!==null)clearTimeout(simTimer);
+  simTimer=setTimeout(()=>{
+    chart1.data.datasets[0].data=randomRemovalSimulated(vals,fracs,10000).map(v=>Math.round(v*1000)/1000);
+    chart1.update();
+    simTimer=null;
+  },0);
 }
 
 skewEl.addEventListener('input',update);
