@@ -4,11 +4,12 @@
 
 Produces `n` informativeness values. Base value depends on mode:
 
+- **`random`**: `Math.random()` — uniform noise
 - **`front`**: `1 - i/n` — linearly decreasing
 - **`ends`**: `abs(i - n/2) / (n/2)` — peaks at edges, zero at centre
 - **`middle`**: `1 - abs(i - n/2) / (n/2)` — peaks at centre, zero at edges
 
-Base values are raised to `0.3 + skew * 0.9` (skew ∈ [0, 3]). Higher skew compresses low values toward zero, concentrating mass. Floor of 0.02 prevents zero-weight items.
+Base values are raised to `0.3 + skew * 0.9` (skew ∈ [0, 3]). Low skew (exponent < 1) inflates values toward 1; high skew (exponent > 1) compresses them toward zero. Floor of 0.02 prevents zero-weight items.
 
 ## Accuracy model
 
