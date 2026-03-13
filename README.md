@@ -9,7 +9,7 @@ Produces `n` informativeness values. Base value depends on mode:
 - **`ends`**: `abs(i - n/2) / (n/2)` — peaks at edges, zero at centre
 - **`middle`**: `1 - abs(i - n/2) / (n/2)` — peaks at centre, zero at edges
 
-Base values are raised to `0.3 + skew * 0.9` (skew ∈ [0, 3]). Low skew (exponent < 1) inflates values toward 1; high skew (exponent > 1) compresses them toward zero. Floor of 0.02 prevents zero-weight items.
+To adjust skewness, base values are raised to a power derived from the skew slider. Low skew flattens the distribution (all items similarly important); high skew concentrates it (a few items carry most of the information). Floor of 0.02 prevents zero-weight items.
 
 ## Accuracy model
 
@@ -25,7 +25,7 @@ Where `retained` is the sum of informativeness over all kept items and `total` i
 
 Performs random removal. For each bracket `f`, runs 10,000 trials: each trial picks `round(f * n)` random items to remove, sums the retained informativeness and computes accuracy. Returns the mean across trials.
 
-By linearity of expectation, this converges to `0.3 + 0.7 * (1 - f)` — a straight line, regardless of the distribution of `vals`. That's the whole point: you can make the distribution as skewed as you want and the simulated curve still lands on the same line.
+By linearity of expectation, this converges to `0.3 + 0.7 * (1 - f)`, i.e., a straight line, regardless of the distribution of `vals`. You can make the distribution as skewed as you want and the simulated curve still lands on the same line w/random lesion removal.
 
 ### `seqFromStart(vals, fracs)`
 
